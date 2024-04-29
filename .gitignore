@@ -1,0 +1,5 @@
+.vscode/
+node_modules/
+url_data.html
+test.json
+podcast_url_data.html
