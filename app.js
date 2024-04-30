@@ -18,22 +18,21 @@ async function scrapeSoundCloud(url) {
 
     // Extract song information
     const songTitle = $('meta[property="og:title"]').attr('content');
-    const artistName = $('meta[property="twitter:audio:artist_name"]').attr(
-      'content'
-    );
 
     // Download Artwork
     const artworkURL = $('meta[property="twitter:image"]').attr('content');
 
     // Extract duration of track
-    const duration = extractDurationFromFile($);
+    const extractedFromScriptData = extractDataFromHtmlContent($);
+    const { artist, duration, createdDate } = extractedFromScriptData;
 
     // Return song information
     return {
       title: songTitle,
-      artist: artistName,
-      artwork: artworkURL,
+      artist: artist,
       duration: duration,
+      createdDate: createdDate,
+      artwork: artworkURL,
     };
   } catch (error) {
     console.error('Error: ', error);
@@ -41,7 +40,7 @@ async function scrapeSoundCloud(url) {
 }
 
 // Function to extract the specific <script> element from the html file
-function extractDurationFromFile($) {
+function extractDataFromHtmlContent($) {
   // Find the script tag containing the data
   const scriptContent = $('script')
     .filter((index, element) => {
@@ -50,12 +49,12 @@ function extractDurationFromFile($) {
     })
     .html();
 
-  // extractDurationFromScript(scriptContent);
-  return extractDurationFromScript(scriptContent);
+  // extractDataFromScript(scriptContent);
+  return extractDataFromScript(scriptContent);
 }
 
 // Function to extract duration data from the <script> element
-function extractDurationFromScript(scriptContent) {
+function extractDataFromScript(scriptContent) {
   try {
     // Remove non-ASCII characters
     // const cleanedScriptContent = scriptContent.replace(/[^\x00-\x7F]/g, '');
@@ -76,23 +75,57 @@ function extractDurationFromScript(scriptContent) {
 
     // Find the object with the duration nested within the "data" object
     const objectWithData = parsedData.find(
-      (obj) => obj.data && obj.data.duration !== undefined
+      // (obj) => obj.data && obj.data.duration !== undefined
+      (obj) => obj.hydratable === 'sound'
     );
 
-    // Extract the duration using optional chaining
-    const duration = objectWithData?.data?.duration;
+    //! Instead of getting just the duration, we will get all the data using individualized functions
 
-    if (duration === undefined) {
-      throw new Error('Duration not found in the JSON data.');
-    }
-    // return duration;
-    return duration;
+    let dataToExtract = {};
+
+    const artistUserName = extractArtistUserName(objectWithData);
+    const duration = extractDuration(objectWithData);
+    const createdDate = extractCreatedDate(objectWithData);
+
+    dataToExtract = {
+      artist: artistUserName,
+      duration: duration,
+      createdDate: createdDate,
+    };
+
+    return dataToExtract;
   } catch (error) {
     console.error('Error extracting duration', error);
     return null;
   }
 }
+// Extract Artist name
+function extractArtistUserName(obj) {
+  const artistUserName = obj?.data?.user?.username;
+  throwPropertyError(artistUserName);
+  return artistUserName;
+}
 
+// Extract the duration
+function extractDuration(obj) {
+  const duration = obj?.data?.duration;
+  throwPropertyError(duration);
+  return duration;
+}
+
+// Extract the created at date
+function extractCreatedDate(obj) {
+  const createdDate = obj?.data?.created_at;
+  throwPropertyError(createdDate);
+  return createdDate;
+}
+
+// Don't repeat yourself! A function for throwing errors when extracting object values
+function throwPropertyError(key) {
+  if (key === undefined) {
+    throw new Error(`${key} not found in the JSON data`);
+  }
+}
 // Example usage
 const soundCloudURL = 'https://soundcloud.com/joelle_illanna/dhwav'; // A dope Desert Hearts mix
 
